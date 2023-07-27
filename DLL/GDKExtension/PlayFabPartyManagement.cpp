@@ -21,7 +21,7 @@
 #define PACKETBUFFER_INACTIVE_USER_TIMEOUT	60 * 1000 * 1000
 
 #ifdef XSM_VERBOSE_TRACE
-#define PARTY_DBG_TRACE(a,...) DebugConsoleOutput(a, __VA_ARGS__)
+//#define PARTY_DBG_TRACE(a,...) DebugConsoleOutput(a, __VA_ARGS__)
 #else
 #define PARTY_DBG_TRACE(a,...)
 #endif
@@ -99,7 +99,7 @@ int PlayFabPartyManager::m_initRefCount = 0;
 std::unordered_map<std::string, std::unique_ptr<PacketBufferNetwork>> PlayFabPartyManager::packetBuffer;
 std::unordered_map<std::string, std::unique_ptr<NetworkUserInfo>> PlayFabPartyManager::networkUsers;
 
-const char* g_PartyTitleID = "B07D0";
+const char* g_PartyTitleID = "CF6DA";
 
 PartyString GetErrorMessage(PartyError error)
 {
@@ -328,6 +328,7 @@ struct PacketBufferNetwork
 
 bool PlayFabPartyManager::Init()
 {
+	DebugConsoleOutput("PlayFabPartyManager::Init() - called\n");
 	if (m_initRefCount == 0)
 	{
 		PartyError err;
@@ -335,17 +336,18 @@ bool PlayFabPartyManager::Init()
 		err = PartyManager::GetSingleton().Initialize(g_PartyTitleID);
 		if (PARTY_FAILED(err))
 		{
-			PARTY_DBG_TRACE("PlayFabPartyManager::Init(): Couldn't get the party started %hs\n", GetErrorMessage(err));
+			DebugConsoleOutput("PlayFabPartyManager::Init(): Couldn't get the party started %hs\n", GetErrorMessage(err));
 			return false;
 		}
 
 		err = PartyXblManager::GetSingleton().Initialize(g_PartyTitleID);
 		if (PARTY_FAILED(err))
 		{
-			PARTY_DBG_TRACE("PlayFabPartyManager::Init(): Couldn't get the chat going at the party %hs\n", GetXblErrorMessage(err));
+			DebugConsoleOutput("PlayFabPartyManager::Init(): Couldn't get the chat going at the party %hs\n", GetXblErrorMessage(err));
 			PartyManager::GetSingleton().Cleanup();
 			return false;
 		}
+		DebugConsoleOutput("PlayFabPartyManager::Init() - completed\n");
 	}
 
 	m_initRefCount++;
@@ -1223,40 +1225,41 @@ void PlayFabPartyManager::OnSetChatAudioOutputCompleted(const Party::PartyStateC
 
 int PlayFabPartyManager::SetupLocalUser(uint64_t _user_id, int _requestID)
 {
+	DebugConsoleOutput("PlayFabPartyManager::SetupLocalUser() - called\n");
 	XUMuser* xumuser = XUM::GetUserFromId(_user_id);
 	if (xumuser == NULL)
 	{
-		PARTY_DBG_TRACE("PlayFabPartyManager::SetupLocalUser(): user %llu not found\n", _user_id);
+		DebugConsoleOutput("PlayFabPartyManager::SetupLocalUser(): user %llu not found\n", _user_id);
 		return -1;
 	}
 
 	if (xumuser->playfabState == XUMuserPlayFabState::logging_in)
 	{
-		PARTY_DBG_TRACE("PlayFabPartyManager::SetupLocalUser(): already in the middle of logging in user %llu\n", _user_id);
+		DebugConsoleOutput("PlayFabPartyManager::SetupLocalUser(): already in the middle of logging in user %llu\n", _user_id);
 		return 1;
 	}
 
 	if (xumuser->playfabState == XUMuserPlayFabState::logged_in)
 	{
-		PARTY_DBG_TRACE("PlayFabPartyManager::SetupLocalUser(): user %llu already logged in\n", _user_id);
+		DebugConsoleOutput("PlayFabPartyManager::SetupLocalUser(): user %llu already logged in\n", _user_id);
 		return 2;
 	}
 
 	if (xumuser->playfabState != XUMuserPlayFabState::logged_out)
 	{
-		PARTY_DBG_TRACE("PlayFabPartyManager::SetupLocalUser(): user %llu not in logged-out state (actual state %d)\n", _user_id, xumuser->playfabState);
+		DebugConsoleOutput("PlayFabPartyManager::SetupLocalUser(): user %llu not in logged-out state (actual state %d)\n", _user_id, xumuser->playfabState);
 		return -2;
 	}
 
 	if (xumuser->playfabLocalChatUser != NULL)
 	{
-		PARTY_DBG_TRACE("PlayFabPartyManager::SetupLocalUser(): user %llu already has local chat user\n", _user_id);
+		DebugConsoleOutput("PlayFabPartyManager::SetupLocalUser(): user %llu already has local chat user\n", _user_id);
 		return -3;
 	}
 
 	if (xumuser->playfabLocalUser != NULL)
 	{
-		PARTY_DBG_TRACE("PlayFabPartyManager::SetupLocalUser(): user %llu already has local user\n", _user_id);
+		DebugConsoleOutput("PlayFabPartyManager::SetupLocalUser(): user %llu already has local user\n", _user_id);
 		return -4;
 	}
 
@@ -1270,14 +1273,16 @@ int PlayFabPartyManager::SetupLocalUser(uint64_t _user_id, int _requestID)
 		&(payload->playfabLocalChatUser)
 	);
 
+	DebugConsoleOutput("PlayFabPartyManager::SetupLocalUser() - CreateLocalChatUser\n");
 	if (PARTY_FAILED(err))
 	{
-		PARTY_DBG_TRACE("PlayFabPartyManager::SetupLocalUser(): CreateLocalChatUser() failed with error %s for user %llu\n", GetXblErrorMessage(err), _user_id);
+		DebugConsoleOutput("PlayFabPartyManager::SetupLocalUser(): CreateLocalChatUser() failed with error %s for user %llu\n", GetXblErrorMessage(err), _user_id);
 
 		delete payload;
 		return -5;
 	}
 
+	DebugConsoleOutput("PlayFabPartyManager::SetupLocalUser() - state logging_in\n");
 	xumuser->playfabState = XUMuserPlayFabState::logging_in;
 
 	return 0;
@@ -1285,6 +1290,7 @@ int PlayFabPartyManager::SetupLocalUser(uint64_t _user_id, int _requestID)
 
 bool PlayFabPartyManager::ShouldRefreshLocalUserLogin(uint64_t _user_id)
 {
+	//DebugConsoleOutput("PlayFabPartyManager::ShouldRefreshLocalUserLogin() - called\n");
 	XUMuser* xumuser = XUM::GetUserFromId(_user_id);
 	if (xumuser == NULL)
 	{
@@ -1311,6 +1317,7 @@ bool PlayFabPartyManager::ShouldRefreshLocalUserLogin(uint64_t _user_id)
 
 int PlayFabPartyManager::RefreshLocalUserLogin(uint64_t _user_id, int _requestID)
 {
+	DebugConsoleOutput("PlayFabPartyManager::RefreshLocalUserLogin() - called\n");
 	XUMuser* xumuser = XUM::GetUserFromId(_user_id);
 	if (xumuser == NULL)
 	{

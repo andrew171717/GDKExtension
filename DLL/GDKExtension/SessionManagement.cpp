@@ -13,6 +13,7 @@
 #include <objbase.h>
 #include <XGameInvite.h>
 
+
 #if !defined(WIN_UAP) && !defined(NO_SECURE_CONNECTION) && YY_CHAT
 #include "Multiplayer/GameChat2IntegrationLayer.h"
 #endif
@@ -28,7 +29,7 @@ const double MATCHMAKING_INVITE = 4001;
 char* g_xboxLaunchURI = NULL;
 char* g_xboxLaunchHost = NULL;
 int64 g_xboxLaunchUser = 0;
-bool g_shouldSendEventForInvite = false;
+bool g_shouldSendEventForInvite = true;
 
 using namespace Windows::Foundation;
 using namespace Concurrency;
@@ -223,36 +224,44 @@ XSMsession::~XSMsession()
 
 void XSMtaskBase::SignalFailure()
 {
-	XSMsession* sess = XSM::GetSession(session);
+	//XSMsession* sess = XSM::GetSession(session);
 
-	int dsMapIndex = CreateDsMap(5, "id",(double)MATCHMAKING_SESSION,(void *)NULL,
-	"status", 0.0, "session_left",	
-	"sessionid", sess != nullptr ? sess->id : -1.0, NULL,
-	"requestid", (double) requestid, NULL,
-	"error", -1.0, NULL);				
+	XSM_VERBOSE_OUTPUT("SignalFailure called\n");
+
+	int dsMapIndex = CreateDsMap(4, 
+		"id",(double)MATCHMAKING_SESSION,(void *)NULL,
+		"status", 0.0, "session_left",	
+		//"sessionid", sess != nullptr ? sess->id : -1.0, NULL,
+		"requestid", (double) requestid, NULL,
+		"error", -1.0, NULL);				
 
 	CreateAsyncEventWithDSMap(dsMapIndex,EVENT_OTHER_SOCIAL);
 
-	XSM_VERBOSE_OUTPUT("%s failed: request id %d\n", g_XSMTaskNames[taskType], requestid);
+	//XSM_VERBOSE_OUTPUT("%s failed: request id %d\n", g_XSMTaskNames[taskType], requestid);
 	
 	SetState(XSMTS_Finished);
 }
 
 void XSMtaskBase::SignalDestroyed()
 {
-	XSMsession* sess = XSM::GetSession(session);
+	try {
+		//XSMsession* sess = XSM::GetSession(session);
 
-	int dsMapIndex = CreateDsMap(5, "id",(double)MATCHMAKING_SESSION,(void *)NULL,
-	"status", 0.0, "session_destroyed",	
-	"sessionid", sess != nullptr ? sess->id : -1.0, NULL,
-	"requestid", (double) requestid, NULL,
-	"error", 0.0, NULL);				
+		int dsMapIndex = CreateDsMap(4, "id", (double)MATCHMAKING_SESSION, (void*)NULL,
+			"status", 0.0, "session_destroyed",
+			//"sessionid", sess != nullptr ? sess->id : -1.0, NULL,
+			"requestid", (double)requestid, NULL,
+			"error", 0.0, NULL);
 
-	CreateAsyncEventWithDSMap(dsMapIndex,EVENT_OTHER_SOCIAL);
+		CreateAsyncEventWithDSMap(dsMapIndex, EVENT_OTHER_SOCIAL);
 
-	XSM_VERBOSE_OUTPUT("%s session destroyed: request id %d, session id %d\n", g_XSMTaskNames[taskType], requestid, sess != nullptr ? sess->id : -1);
-	
-	SetState(XSMTS_Finished);
+		//XSM_VERBOSE_OUTPUT("%s session destroyed: request id %d, session id %d\n", g_XSMTaskNames[taskType], requestid, sess != nullptr ? sess->id : -1);
+
+		SetState(XSMTS_Finished);
+	}
+	catch (int error) {
+		XSM_VERBOSE_OUTPUT("Exception occured in SignalDestroyed()");
+	}
 }
 
 
@@ -359,32 +368,32 @@ void XSM::UnlockEventMutex()
 
 int XSM::GetNextSessionID()
 {
-	int id = currSessionID;
-	currSessionID++;
-
 	if (currSessionID < 0)
-	{		
+	{
 		currSessionID = 0;
 	}
 
+	int id = currSessionID;
+	currSessionID++;
 	return id;
 }
 
 int XSM::GetNextRequestID()
 {
-	int id = currRequestID;
-	currRequestID++;
-
 	if (currRequestID < 0)
-	{		
+	{
 		currRequestID = 0;
 	}
 
+	int id = currRequestID;
+	currRequestID++;
 	return id;
 }
 
 void XSM::Init()
 {
+	DebugConsoleOutput("XSM::Init() - called\n");
+
 	cachedSessions = new std::vector<XSMsession*>();	
 	tasks = new std::vector<XSMtaskBase*>();
 	sessionChangedRecords = new std::vector<SessionChangedRecord*>();
@@ -413,6 +422,7 @@ void XSM::Init()
 		NULL,
 		[](void* context, const char* inviteUri)
 		{
+			DebugConsoleOutput("XGameInviteRegisterForEvent called\n");
 			g_xboxLaunchURI = (char*)YYRealloc(g_xboxLaunchURI, MAX_COMMAND_LINE);
 			g_xboxLaunchHost = (char*)YYRealloc(g_xboxLaunchHost, MAX_COMMAND_LINE);
 
@@ -518,6 +528,7 @@ void XSM::Update()
 	// Since tasks can complete asynchronously it's safest to remove them here
 	for(int i = 0; i < tasks->size();)
 	{
+		//DebugConsoleOutput("Update - found event to check\n");
 		XSMtaskBase* xsmtask = tasks->at(i);
 		if (xsmtask->state == XSMTS_Finished)
 		{
@@ -543,6 +554,7 @@ void XSM::Update()
 
 void XSM::ProcessQueuedEvents()
 {
+	//DebugConsoleOutput("ProcessQueuedEvents() - called\n");
 	// Copy event list so we don't need to hold a lock while processing it
 	//Windows::Foundation::Collections::IVector<SessionChangedRecord^> ^recList = ref new Platform::Collections::Vector<SessionChangedRecord^>();
 	std::vector<SessionChangedRecord*>* recList = new std::vector<SessionChangedRecord*>();
@@ -563,6 +575,7 @@ void XSM::ProcessQueuedEvents()
 	// Now process
 	for (int i = 0; i < numrecords; i++)
 	{
+		DebugConsoleOutput("ProcessQueuedEvents - found event\n");
 		SessionChangedRecord* rec = recList->at(0);		// always get first record as we'll erase it when we're finished with it
 		XSMsession* xsmsession = GetSession(rec->user_id, &(rec->args.SessionReference));
 
@@ -755,38 +768,40 @@ bool AreSessionCurrentUsersEqual(xbl_session_ptr ref, xbl_session_ptr ref2)
 
 bool AreSessionsEqual(xbl_session_ptr ref, xbl_session_ptr ref2, bool _comparecurrentusers = true, bool _allowNullRef2CurrentUser = false)
 {
-	bool refsequal = AreSessionsRefsEqual(ref, ref2);
-	bool currentusersequal = true;
-	if (_comparecurrentusers)
-	{
-		currentusersequal = AreSessionCurrentUsersEqual(ref, ref2);
-		if (_allowNullRef2CurrentUser)
-		{			
-			const XblMultiplayerSessionMember* currentuser = XblMultiplayerSessionCurrentUser(ref2->session_handle);
-			if ((currentuser == 0) || (currentuser->Xuid == 0))
-				currentusersequal = true;	// pretend things are fine
-		}
-	}	
-	/*
-	if (_compareinitiators)
-	{
-		usersequal = AreSessionInitiatorsEqual(ref, ref2);
-		if (_allowNullRef2Initiator)
+	try {
+		bool refsequal = AreSessionsRefsEqual(ref, ref2);
+		bool currentusersequal = true;
+		if (_comparecurrentusers)
 		{
-			const XblMultiplayerSessionConstants* ref2_consts = XblMultiplayerSessionSessionConstants(ref2->session_handle);
-			if (ref2_consts->InitiatorXuidsCount == 0)
-				usersequal = true;	// pretend things are fine
+			currentusersequal = AreSessionCurrentUsersEqual(ref, ref2);
+			if (_allowNullRef2CurrentUser)
+			{
+				const XblMultiplayerSessionMember* currentuser = XblMultiplayerSessionCurrentUser(ref2->session_handle);
+				if ((currentuser == 0) || (currentuser->Xuid == 0))
+					currentusersequal = true;	// pretend things are fine
+			}
 		}
+		/*
+		if (_compareinitiators)
+		{
+			usersequal = AreSessionInitiatorsEqual(ref, ref2);
+			if (_allowNullRef2Initiator)
+			{
+				const XblMultiplayerSessionConstants* ref2_consts = XblMultiplayerSessionSessionConstants(ref2->session_handle);
+				if (ref2_consts->InitiatorXuidsCount == 0)
+					usersequal = true;	// pretend things are fine
+			}
+		}
+		*/
+		return refsequal && currentusersequal;
 	}
-	*/
-
-	return refsequal && currentusersequal;
+	catch (...){
+		return false;
+	}
 }
 
 XSMsession* XSM::GetSession(xbl_session_ptr _session)
 {
-	XSM_LOCK_MUTEX
-	
 	size_t count = cachedSessions->size();
 	for(size_t i = 0; i < count; i++)
 	{
@@ -803,7 +818,7 @@ XSMsession* XSM::GetSession(xbl_session_ptr _session)
 
 XSMsession* XSM::GetSession(uint64 _user_id, XblMultiplayerSessionReference* _sessionref)
 {
-	XSM_LOCK_MUTEX	
+	//XSM_LOCK_MUTEX	
 
 	size_t count = cachedSessions->size();
 	for(size_t i = 0; i < count; i++)
@@ -827,7 +842,7 @@ XSMsession* XSM::GetSession(uint64 _user_id, XblMultiplayerSessionReference* _se
 
 int XSM::AddSession(xbl_session_ptr _session/*, SecureDeviceAssociationTemplate^ _assoctemplate*/, const char* _hopperName, const char* _matchAttributes)
 {	
-	XSM_LOCK_MUTEX
+	//XSM_LOCK_MUTEX
 
 	// Check for duplicate
 	for(int i = 0; i < cachedSessions->size(); i++)
@@ -884,7 +899,7 @@ int XSM::AddSession(xbl_session_ptr _session/*, SecureDeviceAssociationTemplate^
 
 void XSM::DeleteSession(uint32 _id)
 {	
-	XSM_LOCK_MUTEX
+	//XSM_LOCK_MUTEX
 
 	size_t count = cachedSessions->size();
 	for(size_t i = 0; i < count; i++)
@@ -900,7 +915,7 @@ void XSM::DeleteSession(uint32 _id)
 
 void XSM::DeleteSession(xbl_session_ptr _session)
 {
-	XSM_LOCK_MUTEX
+	//XSM_LOCK_MUTEX
 
 	size_t count = cachedSessions->size();
 	for(size_t i = 0; i < count; i++)
@@ -1176,7 +1191,7 @@ void XSM::DeleteSessionGlobally(xbl_session_ptr _session)
 {
 	// We'll let the calling function inform the user since it knows the context in which the session is being deleted
 	// Loop through all contexts and call their delete handler
-	XSM_LOCK_MUTEX
+	//XSM_LOCK_MUTEX
 	
 	size_t count = tasks->size();
 
@@ -1919,58 +1934,59 @@ XSM::OnSessionChanged(
 	)
 {
 
-#ifndef WIN_UAP
+//#ifndef WIN_UAP
+//
+//	if (_user_id != 0 && _updatedsession != NULL)
+//		DebugConsoleOutput("OnSessionChanged called for user %lld session id %s\n", _user_id, XblMultiplayerSessionSessionReference(_updatedsession->session_handle)->SessionName);
+//	else
+//	{
+//		if (_user_id != 0)
+//		{
+//			DebugConsoleOutput("OnSessionChanged called for user %lld session id\n", _user_id);
+//		}
+//		else if (_updatedsession != NULL)
+//		{
+//			DebugConsoleOutput("OnSessionChanged called session id %s\n", XblMultiplayerSessionSessionReference(_updatedsession->session_handle)->SessionName);
+//
+//		}
+//		else
+//		{
+//			DebugConsoleOutput("OnSessionChanged called with null user and session");
+//
+//		}
+//
+//	}
+//#endif
+	//XSM_LOCK_MUTEX
 
-	if (_user_id != 0 && _updatedsession != NULL)
-		DebugConsoleOutput("OnSessionChanged called for user %lld session id %s\n", _user_id, XblMultiplayerSessionSessionReference(_updatedsession->session_handle)->SessionName);
-	else
-	{
-		if (_user_id != 0)
-		{
-			DebugConsoleOutput("OnSessionChanged called for user %lld session id\n", _user_id);
-		}
-		else if (_updatedsession != NULL)
-		{
-			DebugConsoleOutput("OnSessionChanged called session id %s\n", XblMultiplayerSessionSessionReference(_updatedsession->session_handle)->SessionName);
-
-		}
-		else
-		{
-			DebugConsoleOutput("OnSessionChanged called with null user and session");
-
-		}
-
-	}
-#endif
-	XSM_LOCK_MUTEX
-
+	DebugConsoleOutput("OnSessionChanged - called\n");
 	// Iterate through the task list and do work based on the type and state of each task object
 	size_t count = tasks->size();
-
 	bool dbg_processed = false;
 	size_t i;
 	for(i = 0; i < count; i++)
 	{
 		XSMtaskBase* xsmtask = tasks->at(i);
-
 		if (xsmtask != NULL)
 		{
 			// First compare user which 'initiated' this event to avoid processing events multiple times if we have multiple event handlers hooked up to different users
 			if ((xsmtask->state != XSMTS_Finished) && ((xsmtask->user_id == _user_id)
 				|| (_user_id == 0)))		// if we don't specify a user, just process all contexts (most likely means that this function isn't being called from an event handler)
 			{
-				// Check that this event applies to the session associated with this context
-				if (AreSessionsEqual(_updatedsession, xsmtask->session, false))
-				{
+				if (_updatedsession != nullptr && xsmtask != nullptr && xsmtask->session != nullptr) {
+					// Check that this event applies to the session associated with this context
+					if (AreSessionsEqual(_updatedsession, xsmtask->session, false))
+					{
 #ifdef XSM_VERBOSE_TRACE
-					// Compare the old and new sessions
-					XblMultiplayerSessionChangeTypes changes = XblMultiplayerSessionCompare(_updatedsession->session_handle, xsmtask->session->session_handle);
-					DebugConsoleOutput("Session change 0x%08x, task type %s, state %d, request id %d\n", (uint32)changes, g_XSMTaskNames[xsmtask->taskType], xsmtask->state, xsmtask->requestid);
+						// Compare the old and new sessions
+						XblMultiplayerSessionChangeTypes changes = XblMultiplayerSessionCompare(_updatedsession->session_handle, xsmtask->session->session_handle);
+						DebugConsoleOutput("Session change 0x%08x, task type %s, state %d, request id %d\n", (uint32)changes, g_XSMTaskNames[xsmtask->taskType], xsmtask->state, xsmtask->requestid);
 #endif
-					// The ProcessSessionChanged functions can't change any associated XSMsession objects otherwise it'll muck up the change detection below
-					xsmtask->ProcessSessionChanged(_updatedsession);
+						// The ProcessSessionChanged functions can't change any associated XSMsession objects otherwise it'll muck up the change detection below
+						xsmtask->ProcessSessionChanged(_updatedsession);
 
-					dbg_processed = true;
+						dbg_processed = true;
+					}
 				}
 			}
 		}
@@ -2079,6 +2095,7 @@ void XSM::OnPlayFabPartyChange(
 
 void XSMtaskBase::Process()
 {
+	//DebugConsoleOutput("Process - state %d\n", state);
 	// Some common stuff
 	HRESULT res = S_OK;
 	XUMuser* pUser = XUM::GetUserFromId(user_id);
@@ -2093,7 +2110,7 @@ void XSMtaskBase::Process()
 		SetState(XSMTS_FailureCleanup);
 		return;
 	}
-
+	//DebugConsoleOutput("Process - state %d\n", state);
 	switch (state)
 	{
 		case XSMTS_SetupPlayFabNetwork:

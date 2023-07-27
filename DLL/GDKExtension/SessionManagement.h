@@ -378,7 +378,7 @@ extern char* g_XboxSCID;		// we need this in a bunch of places
 char* XuidToString(uint64_t _xuid);
 
 #if defined(XSM_VERBOSE_TRACE)
-#define XSM_VERBOSE_OUTPUT( msg, ...)	DebugConsoleOutput( msg, __VA_ARGS__ )
+//#define XSM_VERBOSE_OUTPUT( msg, ...)	DebugConsoleOutput( msg, __VA_ARGS__ )
 #else 
 #define XSM_VERBOSE_OUTPUT( msg, ...)	
 #endif

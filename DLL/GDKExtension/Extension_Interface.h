@@ -177,7 +177,7 @@ struct YYRunnerInterface
 extern YYRunnerInterface* g_pYYRunnerInterface;
 
 // basic interaction with the user
-#define DebugConsoleOutput(fmt, ...) g_pYYRunnerInterface->DebugConsoleOutput(fmt, __VA_ARGS__)
+//#define DebugConsoleOutput(fmt, ...) g_pYYRunnerInterface->DebugConsoleOutput(fmt, __VA_ARGS__)
 #define ReleaseConsoleOutput(fmt, ...) g_pYYRunnerInterface->ReleaseConsoleOutput(fmt, __VA_ARGS__)
 inline void ShowMessage(const char* msg) { g_pYYRunnerInterface->ShowMessage(msg); }
 

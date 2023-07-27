@@ -71,7 +71,7 @@ void XSMtaskCreateSession::Process()
 						else
 						{
 							// Handle failure
-							XSM_VERBOSE_OUTPUT("createsession (XSMTS_CreateSession_InitialSession) write failed: request id %d\n", self->requestid);
+							XSM_VERBOSE_OUTPUT("createsession (XSMTS_CreateSession_InitialSession) write failed async: request id %d [0x%x]\n", self->requestid, hr);
 							self->SetState(XSMTS_CreateSession_FailureToWrite);
 							self->waiting = false;
 						}
@@ -92,7 +92,7 @@ void XSMtaskCreateSession::Process()
 				// Need to create an event to tell the user what happened
 				//delete asyncBlock;
 
-				XSM_VERBOSE_OUTPUT("createsession (XSMTS_CreateSession_InitialSession) write failed: request id %d\n", requestid);
+				XSM_VERBOSE_OUTPUT("createsession (XSMTS_CreateSession_InitialSession) write failed end: request id %d\n", requestid);
 
 				SetState(XSMTS_FailureCleanup);
 				waiting = false;
@@ -147,7 +147,7 @@ void XSMtaskCreateSession::Process()
 									// Process multiplayer session handle
 									xbl_session_ptr session = std::make_shared<xbl_session>(sessionHandle);
 									XSM_VERBOSE_OUTPUT("createsession (XSMTS_CreateSession_SetHost) write session succeeded: request id %d\n", self->requestid);
-									self->SetState(XSMTS_SetupPlayFabNetwork);//XSMTS_CreateSession_SetupPlayFabNetwork);//XSMTS_CreateSession_CreateSuccess;
+									self->SetState(XSMTS_SetupPlayFabNetwork); //XSMTS_CreateSession_SetupPlayFabNetwork We are not using PlayFab, so just move on.
 
 									XSM::OnSessionChanged(self->user_id, session);
 
@@ -271,10 +271,12 @@ void XSMtaskCreateSession::Process()
 
 		case XSMTS_CreateSession_FailureToWrite:
 		{
+			XSM_VERBOSE_OUTPUT("createsession (XSMTS_CreateSession_FailureToWrite): called \n");
+
 			SignalDestroyed();
+			//XSM::DeleteSessionGlobally(session);	
 
-			XSM::DeleteSessionGlobally(session);			
-
+			XSM_VERBOSE_OUTPUT("createsession (XSMTS_CreateSession_FailureToWrite): end \n");
 		} break;
 	}
 }

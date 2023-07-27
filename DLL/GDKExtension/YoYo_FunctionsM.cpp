@@ -858,7 +858,7 @@ void F_XboxOneGamerTagForUser(RValue& Result, CInstance* selfinst, CInstance* ot
 
 		if (user->XboxUserIdInt == id)
 		{
-			YYCreateString(&Result, user->ModernGamertag);
+			YYCreateString(&Result, user->DisplayName);
 			return;
 		}
 	}
@@ -1252,7 +1252,6 @@ void F_XboxOneGetSaveDataUser(RValue& Result, CInstance* selfinst, CInstance* ot
 }
 
 //user,url,method,headers,body
-YYEXPORT
 void F_XboxGetTokenAndSignature(RValue& Result, CInstance* selfinst, CInstance* otherinst, int argc, RValue* arg)
 {
 	Result.kind = VALUE_REAL;
@@ -1452,7 +1451,7 @@ YYEXPORT
 void F_XboxCheckPrivilege(RValue& Result, CInstance* selfinst, CInstance* otherinst, int argc, RValue* arg)
 {
 
-
+	DebugConsoleOutput("xboxone_check_privilege - called\n");
 	Result.kind = VALUE_REAL;
 	Result.val = 0;	
 	
@@ -1481,6 +1480,7 @@ void F_XboxCheckPrivilege(RValue& Result, CInstance* selfinst, CInstance* otheri
 
 		~CheckPrivilegeContext()
 		{
+			DebugConsoleOutput("xboxone_check_privilege - return results\n");
 			int dsMapIndex = CreateDsMap(3,
 				"event_type", 0.0, "check_privilege_result",
 				"result", (double)(result), NULL,
@@ -2324,6 +2324,118 @@ struct XBLAchievement
 int g_currXBLAchievementRequestID = 0;
 
 YYEXPORT
+void F_XboxOneUpdateRecentPlayers(RValue& Result, CInstance* selfinst, CInstance* otherinst, int argc, RValue* arg)
+{
+	DebugConsoleOutput("xboxone_update_recent_players - called\n");
+	XblContextHandle xbl_ctx;
+	uint64 user_id = (uint64)YYGetInt64(arg, 0);
+	uint64 user_id_recent_i = (uint64)YYGetInt64(arg, 1);
+	{
+		XUM_LOCK_MUTEX;
+		XUMuser* user = XUM::GetUserFromId(user_id);
+		if (user == NULL)
+		{
+			DebugConsoleOutput("xboxone_update_recent_players - couldn't find user_id\n");
+
+			Result.val = -1;
+			return;
+		}
+		HRESULT hr = XblContextCreateHandle(user->user, &xbl_ctx);
+		if (!SUCCEEDED(hr))
+		{
+			DebugConsoleOutput("xboxone_update_recent_players - couldn't create xbl handle (HRESULT 0x%08X)\n", (unsigned)(hr));
+
+			Result.val = -2;
+			return;
+		}
+	}
+	std::vector<XblMultiplayerActivityRecentPlayerUpdate> recentPlayers;
+	if (user_id_recent_i != 0) {
+		XblMultiplayerActivityRecentPlayerUpdate update{ user_id_recent_i };
+		recentPlayers.push_back(update);
+	}
+	HRESULT results = XblMultiplayerActivityUpdateRecentPlayers(xbl_ctx, recentPlayers.data(), recentPlayers.size());
+}
+
+//YYEXPORT
+//void F_XboxOneUpdateRecentPlayers(RValue& Result, CInstance* selfinst, CInstance* otherinst, int argc, RValue* arg)
+//{
+//	Result.kind = VALUE_REAL;
+//	Result.val = -1;
+//
+//#if defined(_GAMING_XBOX)
+//	uint64 user_id = (uint64)YYGetInt64(arg, 0); // don't do any rounding on this
+//	XblContextHandle xbl_ctx;
+//
+//	{
+//		XUM_LOCK_MUTEX;
+//		XUMuser* user = XUM::GetUserFromId(user_id);
+//
+//		if (user == NULL)
+//		{
+//			DebugConsoleOutput("xboxone_update_recent_players - couldn't find user_id\n");
+//
+//			Result.val = -1;
+//			return;
+//		}
+//
+//		HRESULT hr = XblContextCreateHandle(user->user, &xbl_ctx);
+//		if (!SUCCEEDED(hr))
+//		{
+//			DebugConsoleOutput("xboxone_update_recent_players - couldn't create xbl handle (HRESULT 0x%08X)\n", (unsigned)(hr));
+//
+//			Result.val = -2;
+//			return;
+//		}
+//	}
+//
+//	if (argc < 2)
+//	{
+//		DebugConsoleOutput("xboxone_update_recent_players - no recent users specified\n");
+//		return;
+//	}
+//
+//	std::vector<XblMultiplayerActivityRecentPlayerUpdate> recentPlayers;
+//	if (KIND_RValue(&(arg[1])) == VALUE_ARRAY)
+//	{
+//		// Write this in a slightly crazy way that can also be used in the GDK extension
+//		RValue elem;
+//		for (int i = 0; GET_RValue(&elem, &arg[1], NULL, i); ++i)
+//		{
+//			uint64 recent_user_id = (uint64)YYGetInt64(&elem, 0); // don't do any rounding on this
+//			XblMultiplayerActivityRecentPlayerUpdate update{ recent_user_id, XblMultiplayerActivityEncounterType::Default };
+//
+//			recentPlayers.push_back(update);
+//		}
+//
+//		if (recentPlayers.size() == 0)
+//		{
+//			DebugConsoleOutput("xboxone_update_recent_players - recent users array is empty\n");
+//			return;
+//		}
+//	}
+//	else
+//	{
+//		uint64 recent_user_id = (uint64)YYGetInt64(arg, 1); // don't do any rounding on this
+//		XblMultiplayerActivityRecentPlayerUpdate update{ recent_user_id, XblMultiplayerActivityEncounterType::Default };
+//
+//		recentPlayers.push_back(update);
+//	}
+//
+//	HRESULT hr = XblMultiplayerActivityUpdateRecentPlayers(xbl_ctx, recentPlayers.data(), recentPlayers.size());
+//	if (!SUCCEEDED(hr))
+//	{
+//		DebugConsoleOutput("xboxone_update_recent_players - couldn't update recent players info (HRESULT 0x%08X)\n", (unsigned)(hr));
+//
+//		Result.val = hr;
+//		return;
+//	}
+//
+//	Result.val = 0;
+//#endif
+//}
+
+YYEXPORT
 void F_XboxOneSetAchievementProgress(RValue& Result, CInstance* selfinst, CInstance* otherinst, int argc, RValue* arg)
 {
 	Result.kind = VALUE_REAL;
@@ -2613,14 +2725,16 @@ YYEXPORT
 void F_XboxOneSetRichPresence(RValue& Result, CInstance* selfinst, CInstance* otherinst, int argc, RValue* arg)
 {
 	Result.kind = VALUE_REAL;
-
 	uint64 user_id = (uint64)YYGetInt64(arg, 0);
 	bool is_user_active = YYGetBool(arg, 1);
 	const char* rich_presence_string = YYGetString(arg, 2);
+	//DebugConsoleOutput("xboxone_set_rich_presence() YYVars Count [%d]\n", argc);
+	//DebugConsoleOutput("xboxone_set_rich_presence() YYVars user_id [%llu]\n", user_id);
+	//DebugConsoleOutput("xboxone_set_rich_presence() YYVars rich_presence_string [%s]\n", rich_presence_string);
 
-	const char* scid = (argc > 3)
-		? YYGetString(arg, 3)
-		: g_stats_service_config;
+	const char* scid = g_XboxSCID;// (argc > 3)
+		//? YYGetString(arg, 3)
+		//: g_stats_service_config;
 	
 	if (scid == NULL)
 	{

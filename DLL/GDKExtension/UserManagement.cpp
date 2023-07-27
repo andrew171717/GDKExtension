@@ -290,11 +290,13 @@ int XUMuser::DisassociateController(const APP_LOCAL_DEVICE_ID* _controller)
 int XUMuser::EnableMultiplayerSubscriptions()
 {
 	XblContextHandle context = GetXboxLiveContext();
-
+	DebugConsoleOutput("EnableMultiplayerSubscriptions() - called\n");
 	if (context != NULL)
 	{
+		DebugConsoleOutput("EnableMultiplayerSubscriptions() - context is not null\n");
 		if (MultiSubRefCount == 0)
 		{
+			DebugConsoleOutput("EnableMultiplayerSubscriptions() - count is 0\n");
 			// Spin while we wait for previous shutdown to complete
 			// We could do this asynchronously but it would complicate the code quite a bit and it should be a rare occurance
 			//while(MultiplayerSubscriptionsEnabled == true);		// hmm, could pump the message loop here
@@ -323,7 +325,7 @@ int XUMuser::EnableMultiplayerSubscriptions()
 			{
 				XblMultiplayerRemoveSessionChangedHandler(context, SessionChangeToken);
 				XblMultiplayerRemoveSubscriptionLostHandler(context, SubscriptionsLostToken);
-
+				DebugConsoleOutput("EnableMultiplayerSubscriptions() - PlayFab Init failed\n");
 				return -1;
 			}
 
@@ -332,7 +334,7 @@ int XUMuser::EnableMultiplayerSubscriptions()
 			{
 				XblMultiplayerRemoveSessionChangedHandler(context, SessionChangeToken);
 				XblMultiplayerRemoveSubscriptionLostHandler(context, SubscriptionsLostToken);
-
+				DebugConsoleOutput("EnableMultiplayerSubscriptions() - PlayFab Setup local failed\n");
 				return -1;
 			}
 
@@ -342,7 +344,7 @@ int XUMuser::EnableMultiplayerSubscriptions()
 		MultiSubRefCount++;
 	}
 
-	return -1;
+	return 0;
 }
 
 int XUMuser::DisableMultiplayerSubscriptions()

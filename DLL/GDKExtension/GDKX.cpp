@@ -8,12 +8,18 @@
 #include <stdlib.h>
 #include <stdio.h>
 #include <string.h>
+#include <iostream>
+#include <fstream>
+#include <algorithm>
 
 #include <windows.h>
 #include <XGameRuntime.h>
 
 #include "Stats.h"
 #include "UserManagement.h"
+#include "SessionManagement.h"
+
+using namespace std;
 
 #define _GAMING_XBOX
 
@@ -22,6 +28,49 @@ YYRunnerInterface* g_pYYRunnerInterface;
 
 char* g_XboxSCID = NULL;
 bool g_gdk_initialised = false;
+
+
+const char* getCurrentDateTime(const char* s) {
+	time_t now = time(0);
+	struct tm  tstruct;
+	char  buf[85] = {0};
+	tstruct = *localtime(&now);
+	if (s == "now")
+		strftime(buf, sizeof(buf), "%m-%d %X", &tstruct);
+	else if (s == "date")
+		strftime(buf, sizeof(buf), "%Y-%m-%d", &tstruct);
+	return buf;
+};
+
+
+
+void DebugConsoleOutput(const char* logMsg, ...) {
+	/*string filePath = "C:/GameDevelopment/LauncherHeroes/PC_output/output.txt";
+	string now = getCurrentDateTime("now");
+	
+	va_list arglist;
+	va_start(arglist, logMsg);
+	char dest[32000];
+	vsnprintf(dest, sizeof(dest), logMsg, arglist);
+	va_end(arglist);
+
+	char buff[32000];
+	snprintf(buff, sizeof(buff), dest, arglist);
+
+	ofstream ofs(filePath.c_str(), std::ios_base::out | std::ios_base::app);
+	ofs << now << '\t' << buff;
+	ofs.close();*/
+}
+
+//void YYError(const char* logMsg, ...) {
+//	DebugConsoleOutput(logMsg, 0);
+//}
+void PARTY_DBG_TRACE(const char* logMsg, ...) {
+	DebugConsoleOutput(logMsg, 0);
+}
+void XSM_VERBOSE_OUTPUT(const char* logMsg, ...) {
+	DebugConsoleOutput(logMsg, 0);
+}
 
 
 XTaskQueueHandle g_taskQueue;
@@ -140,9 +189,11 @@ static std::vector<std::string> _find_packaged_files(const char *filename_expr)
 YYEXPORT
 void gdk_init(RValue& Result, CInstance* selfinst, CInstance* otherinst, int argc, RValue* arg)
 {
+	DebugConsoleOutput("\n\n\n");
+
 	if (argc != 1)
 	{
-		YYError("gdk_init() called with %d arguments, expected 1", argc);
+		DebugConsoleOutput("gdk_init() called with %d arguments, expected 1", argc);
 		return;
 	}
 
@@ -178,9 +229,9 @@ void gdk_init(RValue& Result, CInstance* selfinst, CInstance* otherinst, int arg
 	HRESULT hr = XTaskQueueCreate(XTaskQueueDispatchMode::ThreadPool, XTaskQueueDispatchMode::Manual, &g_taskQueue);
 	if (FAILED(hr))
 	{
-		YYError("XTaskQueueCreate failed (HRESULT 0x%08X)\n", (unsigned)(hr));
+		DebugConsoleOutput("XTaskQueueCreate failed (HRESULT 0x%08X)\n", (unsigned)(hr));
 	}
-	
+
 	XblInitArgs xblArgs = {};
 	xblArgs.scid = g_XboxSCID;
 
@@ -202,6 +253,8 @@ void gdk_init(RValue& Result, CInstance* selfinst, CInstance* otherinst, int arg
 		&m_networkingConnectivityHintChangedCallbackToken
 	);
 
+	XSM::Init();
+
 	g_gdk_initialised = true;
 }
 
@@ -216,6 +269,10 @@ void gdk_update(RValue& Result, CInstance* selfinst, CInstance* otherinst, int a
 
 	XUM::Update();
 	UpdateIAPFunctionsM();
+
+	XSM::Update();
+
+	PlayFabPartyManager::Process();
 
 	// Handle network connection changed callback
 	while (g_taskQueue != NULL && XTaskQueueDispatch(g_taskQueue, XTaskQueuePort::Completion, 0)) { }
@@ -235,39 +292,54 @@ void gdk_quit(RValue& Result, CInstance* selfinst, CInstance* otherinst, int arg
 
 	DebugConsoleOutput("gdk_quit() called - shutting down the GDK extension\n");
 
+	DebugConsoleOutput("gdk_quit() called - QuitIAPFunctionsM\n");
 	QuitIAPFunctionsM();
+	
+	DebugConsoleOutput("gdk_quit() called - XUM::Quit()\n");
 	XUM::Quit();
+
+	DebugConsoleOutput("gdk_quit() called - XSM::Quit()\n");
+	XSM::Quit();
 
 	XAsyncBlock async;
 	memset(&async, 0, sizeof(async));
 
+	DebugConsoleOutput("gdk_quit() called - XblCleanupAsync()\n");
 	HRESULT status = XblCleanupAsync(&async);
-	if (SUCCEEDED(status))
+	/*if (SUCCEEDED(status))
 	{
-		status = XAsyncGetStatus(&async, true);
+		DebugConsoleOutput("gdk_quit() called - XAsyncGetStatus()\n");
+		status = XAsyncGetStatus(&async, false);
 	}
-
+	
 	if(!SUCCEEDED(status))
 	{
 		DebugConsoleOutput("XblCleanupAsync failed (HRESULT 0x%08X)\n", (unsigned)(status));
-	}
+	}*/
 
+	DebugConsoleOutput("gdk_quit() called - XNetworkingUnregisterConnectivityHintChanged()\n");
 	// CALLBACKS (unregister)
 	XNetworkingUnregisterConnectivityHintChanged(m_networkingConnectivityHintChangedCallbackToken, false);
 
 	// Destroy task queue
+	DebugConsoleOutput("gdk_quit() called - XTaskQueueTerminate()\n");
 	bool terminated = false;
 	XTaskQueueTerminate(g_taskQueue, false, &terminated, [](void* context) { *(bool*)(context) = true; });
+	DebugConsoleOutput("gdk_quit() called - XTaskQueueDispatch()\n");
 	while (XTaskQueueDispatch(g_taskQueue, XTaskQueuePort::Completion, 0) || !terminated) {}
+	DebugConsoleOutput("gdk_quit() called - XTaskQueueCloseHandle()\n");
 	XTaskQueueCloseHandle(g_taskQueue);
 	g_taskQueue = NULL;
 
+	DebugConsoleOutput("gdk_quit() called - XGameRuntimeUninitialize()\n");
 	XGameRuntimeUninitialize();
 
 	YYFree(g_XboxSCID);
 	g_XboxSCID = NULL;
 
 	g_gdk_initialised = false;
+
+	DebugConsoleOutput("gdk_quit() - finished\n");
 }
 
 YYEXPORT
@@ -313,7 +385,7 @@ void F_XboxOneGetActivatingUser(RValue& Result, CInstance* selfinst, CInstance* 
 
 	if (argc != 0)
 	{
-		YYError("xboxone_get_activating_user() - doesn't take any arguments", false);
+		DebugConsoleOutput("xboxone_get_activating_user() - doesn't take any arguments", false);
 		return;
 	}
 	XUM_LOCK_MUTEX;

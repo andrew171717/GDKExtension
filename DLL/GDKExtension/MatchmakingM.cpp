@@ -39,15 +39,15 @@ extern int JSONToDSList(char* _jsonListData, char* _key, int _list);
 extern bool		g_SocketInitDone;
 extern	int		g_IDE_Version;
 
-void F_XboxOneMatchmakingCreate(RValue& Result, CInstance* selfinst, CInstance* otherinst, int argc, RValue* arg);
+YYEXPORT void F_XboxOneMatchmakingCreate(RValue& Result, CInstance* selfinst, CInstance* otherinst, int argc, RValue* arg);
 void F_XboxOneMatchmakingFind(RValue& Result, CInstance* selfinst, CInstance* otherinst, int argc, RValue* arg);
-void F_XboxOneMatchmakingStart(RValue& Result, CInstance* selfinst, CInstance* otherinst, int argc, RValue* arg);
+YYEXPORT void F_XboxOneMatchmakingStart(RValue& Result, CInstance* selfinst, CInstance* otherinst, int argc, RValue* arg);
 void F_XboxOneMatchmakingStop(RValue& Result, CInstance* selfinst, CInstance* otherinst, int argc, RValue* arg);
 void F_XboxOneMatchmakingSessionGetUsers(RValue& Result, CInstance* selfinst, CInstance* otherinst, int argc, RValue* arg);
-void F_XboxOneMatchmakingSessionLeave(RValue& Result, CInstance* selfinst, CInstance* otherinst, int argc, RValue* arg);
-void F_XboxOneMatchmakingSendInvites(RValue& Result, CInstance* selfinst, CInstance* otherinst, int argc, RValue* arg);
-void F_XboxOneMatchmakingSetJoinableSession(RValue& Result, CInstance* selfinst, CInstance* otherinst, int argc, RValue* arg);
-void F_XboxOneMatchmakingJoinInvite(RValue& Result, CInstance* selfinst, CInstance* otherinst, int argc, RValue* arg);
+YYEXPORT void F_XboxOneMatchmakingSessionLeave(RValue& Result, CInstance* selfinst, CInstance* otherinst, int argc, RValue* arg);
+YYEXPORT void F_XboxOneMatchmakingSendInvites(RValue& Result, CInstance* selfinst, CInstance* otherinst, int argc, RValue* arg);
+YYEXPORT void F_XboxOneMatchmakingSetJoinableSession(RValue& Result, CInstance* selfinst, CInstance* otherinst, int argc, RValue* arg);
+YYEXPORT void F_XboxOneMatchmakingJoinInvite(RValue& Result, CInstance* selfinst, CInstance* otherinst, int argc, RValue* arg);
 void F_XboxOneMatchmakingJoinSessionHandle(RValue& Result, CInstance* selfinst, CInstance* otherinst, int argc, RValue* arg);
 
 void F_XboxOneChatAddUserToChannel(RValue& Result, CInstance* selfinst, CInstance* otherinst, int argc, RValue* arg);
@@ -179,6 +179,7 @@ bool StringToGUID(GUID* _guid, const char* _string)
 }
 
 // Matchmaking stuff
+YYEXPORT
 void F_XboxOneMatchmakingCreate(RValue& Result, CInstance* selfinst, CInstance* otherinst, int argc, RValue* arg)
 {
 	Result.kind = VALUE_REAL;
@@ -222,9 +223,9 @@ void F_XboxOneMatchmakingCreate(RValue& Result, CInstance* selfinst, CInstance* 
 	// Generate strings for template and hopper names
 	const char* templatename = YYGetString(arg, 2);
 	const char* hoppername = YYGetString( arg, 3);
-	const char* sdatemplatename = YYGetString(arg, 4);
+	//const char* sdatemplatename = YYGetString(arg, 4);
 
-	const char* matchattributes = argc > 5 ? YYGetString(arg, 5) : "";
+	const char* matchattributes = "";
 
 #ifdef NOV_XDK
 	SecureDeviceAssociationTemplate^ assoctemplate = nullptr;
@@ -514,6 +515,7 @@ namespace XboxOneChat
 	extern void Shutdown();
 }
 
+YYEXPORT
 void F_XboxOneMatchmakingStart(RValue& Result, CInstance* selfinst, CInstance* otherinst, int argc, RValue* arg)
 {
 	Result.kind = VALUE_REAL;
@@ -538,7 +540,7 @@ void F_XboxOneMatchmakingStart(RValue& Result, CInstance* selfinst, CInstance* o
 	}	
 	DebugConsoleOutput("xboxone_matchmaking_start() called\n");
 	// Enable multiplayer subscriptions
-	user->EnableMultiplayerSubscriptions();
+	Result.val = user->EnableMultiplayerSubscriptions();
 
 #if !defined(WIN_UAP) && !defined(NO_SECURE_CONNECTION) && YY_CHAT
 	if(g_XboxOneGameChatEnabled)
@@ -546,7 +548,7 @@ void F_XboxOneMatchmakingStart(RValue& Result, CInstance* selfinst, CInstance* o
 		XboxOneChat::InitializeSocket();
 	}
 #endif
-	Result.val = 0.0;
+	//Result.val = 0.0;
 }
 
 void StopMultiplayerForUser(XUMuser* user)
@@ -565,7 +567,7 @@ void StopMultiplayerForUser(XUMuser* user)
 	// The back end will boot the user from any other sessions they are in after they time-out
 	// Just do this in a brute force fashion (doesn't have to be efficient)
 	{
-		XSM_LOCK_MUTEX;
+		//XSM_LOCK_MUTEX;
 		//Windows::Foundation::Collections::IVector<XSMsession^>^ sessions = XSM::GetSessions();
 		std::vector<XSMsession*>* sessions = XSM::GetSessions();
 
@@ -637,7 +639,8 @@ void StopMultiplayerForUser(XUMuser* user)
 	// Disable multiplayer subscriptions
 	// I don't *think* this should affect the session writes above, as we're just disabling active monitoring of session changes
 	// which shouldn't affect pending callbacks
-	user->DisableMultiplayerSubscriptions();
+	int result = user->DisableMultiplayerSubscriptions();
+	DebugConsoleOutput("DisableMultiplayerSubscriptions() - called %d\n", result);
 }
 
 void F_XboxOneMatchmakingStop(RValue& Result, CInstance* selfinst, CInstance* otherinst, int argc, RValue* arg)
@@ -649,7 +652,7 @@ void F_XboxOneMatchmakingStop(RValue& Result, CInstance* selfinst, CInstance* ot
 	// Get user
 	uint64 user_id = (uint64)YYGetInt64(arg, 0);
 
-	XUM_LOCK_MUTEX
+	//XUM_LOCK_MUTEX
 	XUMuser* user = XUM::GetUserFromId(user_id);
 
 	if (user == NULL)
@@ -727,6 +730,7 @@ void F_XboxOneMatchmakingSessionGetUsers(RValue& Result, CInstance* selfinst, CI
 #endif
 }
 
+YYEXPORT
 void F_XboxOneMatchmakingSessionLeave(RValue& Result, CInstance* selfinst, CInstance* otherinst, int argc, RValue* arg)
 {	
 	Result.kind = VALUE_REAL;
@@ -749,7 +753,6 @@ void F_XboxOneMatchmakingSessionLeave(RValue& Result, CInstance* selfinst, CInst
 		// Fire off an async event (making it async so it matches the PSN version - also allows the same event to be raised in other circumstances)
 		int reqID = XSM::GetNextRequestID();
 		Result.val = reqID;
-
 		{
 			// DS_LOCK_MUTEX;
 
@@ -817,6 +820,7 @@ void F_XboxOneMatchmakingSessionLeave(RValue& Result, CInstance* selfinst, CInst
 	}
 }
 
+YYEXPORT
 void F_XboxOneMatchmakingSendInvites(RValue& Result, CInstance* selfinst, CInstance* otherinst, int argc, RValue* arg)
 {	
 	Result.kind = VALUE_REAL;
@@ -905,6 +909,7 @@ void F_XboxOneMatchmakingSendInvites(RValue& Result, CInstance* selfinst, CInsta
 	}
 }
 
+YYEXPORT
 void F_XboxOneMatchmakingSetJoinableSession(RValue& Result, CInstance* selfinst, CInstance* otherinst, int argc, RValue* arg)
 {	
 	Result.kind = VALUE_REAL;
@@ -1095,6 +1100,7 @@ int MatchmakingJoinSession(uint64 user_id, const char* handleSessionToJoin, cons
 	return joinsessiontask->requestid;
 }
 
+YYEXPORT
 void F_XboxOneMatchmakingJoinInvite(RValue& Result, CInstance* selfinst, CInstance* otherinst, int argc, RValue* arg)
 {
 	Result.kind = VALUE_REAL;

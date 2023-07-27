@@ -111,3 +111,9 @@ static const int EVENT_OTHER_SYSTEM_EVENT = 75;
 static const int EVENT_OTHER_WEB_IMAGE_LOAD = 60;
 
 extern char* g_XboxSCID;
+
+const char* getCurrentDateTime(const char* s);
+void DebugConsoleOutput(const char* logMsg, ...);
+//void YYError(const char* logMsg, ...);
+void PARTY_DBG_TRACE(const char* logMsg, ...);
+void XSM_VERBOSE_OUTPUT(const char* logMsg, ...);
