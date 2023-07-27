@@ -1,3 +1,20 @@
+# Modifications used for the release of **[Launcher Heroes](http://launcherheroes.com/)**:
+
+Newly Added Functions:
+- xboxone_update_recent_players(user_id, user_id_recent) - this has since been added to the offical, release, but I have not tested their version. My version only takes one user id, the offical version supports multiple as an array.
+  
+Reenabled Functions (these functions were not setup when this extension was presumable ported from the Xbox export. I have set them up to be usable):
+- xboxone_matchmaking_start(user_id)
+- xboxone_matchmaking_send_invites(from_user, session_to_invite_into, text_to_add_to_invite)
+- xboxone_matchmaking_create(user_id, visibility, template, hopper, sdatemplate)
+- xboxone_matchmaking_set_joinable_session(user_id, session_id)
+- xboxone_matchmaking_join_invite(user_id, invitation_id, invitation_host, sda_template_name)
+- xboxone_matchmaking_session_leave(session_id)
+  
+Misc Changes:
+- xboxone_gamertag_for_user(user_id) - Uses DisplayName instead of ModernGamertag
+- Created my own logger since I couldn't get the existing logging functionality to work with GameMaker. You will need to uncomment the code and set a text file to write your logs to. Modify the function DebugConsoleOutput() in GDKX.cpp if you need logging, otherwise ignore this.
+
 # GameMaker Studio 2 - GDK Extension
 
 An Extension for GameMaker Studio 2 (GMS2) that gives GMS2 Windows Target support for the GDK allowing them to be released on the Microsoft Store and use XBox Live functionality (for those developers that have access through id@xbox, see [this link](https://www.xbox.com/developers/id) for more information on id@xbox).
