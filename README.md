@@ -1,4 +1,5 @@
 # Modifications used for the release of **[Launcher Heroes](http://launcherheroes.com/)**:
+This is a fork of the "GameMaker Studio 2 - GDK Extension"
 
 Newly Added Functions:
 - xboxone_update_recent_players(user_id, user_id_recent) - this has since been added to the offical, release, but I have not tested their version. My version only takes one user id, the offical version supports multiple as an array.
