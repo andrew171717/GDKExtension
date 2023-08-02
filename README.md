@@ -1,4 +1,4 @@
-# Modifications used for the release of **[Launcher Heroes](http://launcherheroes.com/)**:
+# Modifications used for the Microsoft Store version of **[Launcher Heroes](http://launcherheroes.com/)**:
 This is a fork of the [GameMaker Studio 2 - GDK Extension](https://github.com/YoYoGames/GDKExtension)
 
 Newly Added Functions:
